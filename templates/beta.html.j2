@@ -35,7 +35,7 @@
 
 <p>There are two rate limits in play: <tt>Registrations/IP address</tt>, and <tt>Certificates/Domain</tt>.</p>
 
-<p><tt>Registrations/IP address</tt> limits the number of registrations you can make in a given week; currently 2. This means you <strong>should avoid deleting the <tt>/etc/letsencrypt/accounts</tt> folder</strong>, or you may not be able to re-register.</p>
+<p><tt>Registrations/IP address</tt> limits the number of registrations you can make in a given day; currently 10. This means you <strong>should avoid deleting the <tt>/etc/letsencrypt/accounts</tt> folder</strong>, or you may not be able to re-register.</p>
 
 <p><tt>Certificates/Domain</tt> you could run into through repeated re-issuance. This limit measures certificates issued for a given combination of <tt>Top Level Domain + Domain</tt>. This means if you issue certificates for the following domains, at the end you would have what we consider 4 certificates for the domain <tt>example.com</tt>.
 
@@ -46,7 +46,7 @@
   <li>example.com www.example.com</li>
 </ol>
 
-The limit on <tt>Certificates/Domain</tt> has a window of 90 days - the same as our certificate lifespans. We know it's restrictive at present; thank you for your patience in helping us ensure Let's Encrypt is ready for the whole world.</p>
+The limit on <tt>Certificates/Domain</tt> has a window of 60 days, to give 30 days for renewals. We know it's restrictive at present; thank you for your patience in helping us ensure Let's Encrypt is ready for the whole world.</p>
 
 <h2>Certificate Transparency</h2>
 
