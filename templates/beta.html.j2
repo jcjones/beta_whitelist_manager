@@ -1,0 +1,89 @@
+<p>Greetings from Let's Encrypt, {{ email }}.</p>
+
+<p>Thank you for your interest in our beta program! We're excited to let you know that your domains (below) have been whitelisted, and you can now utilize an ACME client to obtain a certificate for them.</p>
+
+<h2>Quick Start</h2>
+
+<p>To use Let's Encrypt's official client to obtain your real certificates, you will need to provide the production API URL on the command line:</p>
+
+<pre>
+  <a href="https://acme-v01.api.letsencrypt.org/directory">https://acme-v01.api.letsencrypt.org/directory</a>
+</pre>
+
+<p>When running the Python client (installation directions [<a href="https://letsencrypt.readthedocs.org/en/latest/using.html">1</a>]), be sure to specify the <tt>--server</tt> argument with the production URL:</p>
+
+<pre>
+  git clone https://github.com/letsencrypt/letsencrypt
+  cd letsencrypt
+  ./letsencrypt-auto --agree-dev-preview <span style="background-color: yellow; font-weight: bold;">--server \
+      https://acme-v01.api.letsencrypt.org/directory</span> auth
+</pre>
+
+<p>If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.</p>
+
+<h3>Known Issues</h3>
+
+<p>There are some known issues with the official Python client posted here: <a href="https://github.com/letsencrypt/letsencrypt/wiki/Known-issues">https://github.com/letsencrypt/letsencrypt/wiki/Known-issues</a></p>
+
+<h2>Renewals and Lifetimes</h2>
+
+<p>Certificates from Let's Encrypt are valid for 90 days. We recommend renewing them every 60 days to provide a nice margin of error. As a beta participant, you should be prepared to manually renew your certificates at that time. As we get closer to General Availability, we hope to have automatic renewal tested and working on more platforms, but for now, please play it safe and keep track.</p>
+
+<h2>Rate Limiting</h2>
+
+<p>During this beta test we have very tight rate-limiting in place. We plan to loosen these limits as the beta proceeds.</p>
+
+<p>There are two rate limits in play: <tt>Registrations/IP address</tt>, and <tt>Certificates/Domain</tt>.</p>
+
+<p><tt>Registrations/IP address</tt> limits the number of registrations you can make in a given week; currently 2. This means you <strong>should avoid deleting the <tt>/etc/letsencrypt/accounts</tt> folder</strong>, or you may not be able to re-register.</p>
+
+<p><tt>Certificates/Domain</tt> you could run into through repeated re-issuance. This limit measures certificates issued for a given combination of <tt>Top Level Domain + Domain</tt>. This means if you issue certificates for the following domains, at the end you would have what we consider 4 certificates for the domain <tt>example.com</tt>.
+
+<ol>
+  <li>www.example.com</li>
+  <li>example.com www.example.com</li>
+  <li>webmail.example.com ldap.example.com</li>
+  <li>example.com www.example.com</li>
+</ol>
+
+The limit on <tt>Certificates/Domain</tt> has a window of 90 days - the same as our certificate lifespans. We know it's restrictive at present; thank you for your patience in helping us ensure Let's Encrypt is ready for the whole world.</p>
+
+<h2>Certificate Transparency</h2>
+
+<p>Part of our transparency mission includes publicly disclosing the certificates <a href="https://crt.sh/?caid=7395">we issue</a> via <a href="https://www.certificate-transparency.org/">Certificate Transparency</a>. Your email address is not publicly disclosed.</p>
+
+<h2>Helpful Information</h2>
+
+<p>Let's Encrypt maintainence events are posted on <a href="https://letsencrypt.status.io/">https://letsencrypt.status.io/</a> and Twitter (<a href="https://twitter.com/letsencrypt_ops">@letsencrypt_ops</a>). If you need help, both the Let's Encrypt community at <a href="https://community.letsencrypt.org/">https://community.letsencrypt.org/</a> and #letsencrypt on irc.freenode.org are excellent sources of assistance.</p>
+
+<p>If there are updates for Beta program participants, they will be posted at the community site at <a href="https://community.letsencrypt.org/t/beta-program-announcements/1631">https://community.letsencrypt.org/t/beta-program-announcements/1631</a>.</p>
+
+<p>Your whitelisted domains are:
+<ul>
+{% for domain in domains %}
+  <li>{{ domain }}</li>
+{%- endfor %}
+</ul>
+</p>
+
+<h2>Like What We're Doing?</h2>
+<p>If you like what we're doing please consider donating to Let's Encrypt. Individual donors are critical to keeping the free certs rolling. If you can, please consider making it a recurring donation; that'd be cool of you.</p>
+
+<ol>
+<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+  <input type="hidden" name="cmd" value="_s-xclick">
+  <input type="hidden" name="hosted_button_id" value="AF6VLVH49A3QN">
+  <input type="image" src="https://www.paypal.com/en_US/i/btn/btn_donateCC_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
+  <img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
+</form>
+</ol>
+
+<h2>Finally</h2>
+
+<p>On behalf of everyone involved in Let's Encrypt, welcome to the future of the encrypted web.</p>
+
+<p><strong>Note:</strong> Please do not respond to this email. This is a one-time notification about your acceptance into the Beta Program. You will not receive further emails about our Beta Program unless you send in another application.</p>
+
+<dd>
+[1] <a href="https://letsencrypt.readthedocs.org/en/latest/using.html#installation-and-usage">https://letsencrypt.readthedocs.org/en/latest/using.html#installation-and-usage</a>
+</dd>

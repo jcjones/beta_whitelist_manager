@@ -1,0 +1,77 @@
+Greetings from Let's Encrypt, {{ email }}.
+
+Thank you for your interest in our beta program! We're excited to let you know that your domains (below) have been whitelisted, and you can now utilize an ACME client to obtain a certificate for them.
+
+# Quick Start
+
+To use Let's Encrypt's official client to obtain your real certificates, you will need to provide the production API URL on the command line:
+
+  https://acme-v01.api.letsencrypt.org/directory.
+
+When running the Python client (installation directions [1]), be sure to specify the --server argument with the production URL:
+
+  git clone https://github.com/letsencrypt/letsencrypt
+  cd letsencrypt
+  ./letsencrypt-auto --agree-dev-preview --server \
+      https://acme-v01.api.letsencrypt.org/directory auth
+
+If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.
+
+## Known Issues
+
+There are some known issues with the official Python client posted here: https://github.com/letsencrypt/letsencrypt/wiki/Known-issues
+
+# Renewals and Lifetimes
+
+Certificates from Let's Encrypt are valid for 90 days. We recommend renewing them every 60 days to provide a nice margin of error. As a beta participant, you should be prepared to manually renew your certificates at that time. As we get closer to General Availability, we hope to have automatic renewal tested and working on more platforms, but for now, please play it safe and keep track.
+
+# Rate Limiting
+
+During this beta test we have very tight rate-limiting in place. We plan to loosen these limits as the beta proceeds.
+
+There are three rate limits in play: Hits/sec, Registrations/IP address, and Certificates/Domain.
+
+Hits/sec is a simple limit of burst traffic. It has a reasonably short window, and is set reasonably permissive. Clients are unlikely to trigger this limit.
+
+Registrations/IP address limits the number of registrations you can make in a given week; currently 2. This means you should avoid deleting the /etc/letsencrypt/accounts folder, or you may not be able to re-register.
+
+Certificates/Domain you could run into through repeated re-issuance. This limit measures certificates issued for a given combination of Top Level Domain + Domain. This means if you issue certificates for the following domains, at the end you would have what we consider 4 certificates for the domain example.com.
+
+  1. www.example.com
+  2. example.com www.example.com
+  3. webmail.example.com ldap.example.com
+  4. example.com www.example.com
+
+The limit on Certificates/Domain has a window of 90 days - the same as our certificate lifespans. We know it's restrictive at present; thank you for your patience in helping us ensure Let's Encrypt is ready for the whole world.
+
+# Certificate Transparency
+
+Part of our transparency mission includes publicly disclosing the certificates we issue via Certificate Transparency. Your email address is not publicly disclosed.
+
+# Helpful Information
+
+Let's Encrypt maintainence events are posted on https://letsencrypt.status.io/ and Twitter (@letsencrypt_ops). If you need help, both the Let's Encrypt community at https://community.letsencrypt.org/ and #letsencrypt on irc.freenode.org are excellent sources of assistance.
+
+If there are updates for Beta program participants, they will be posted at the community site at https://community.letsencrypt.org/t/beta-program-announcements/1631.
+
+Your whitelisted domains are:
+
+{% for domain in domains %}
+ - {{ domain }}
+{%- endfor %}
+
+On behalf of everyone involved in Let's Encrypt, welcome to the future of the encrypted web.
+
+# Like What We're Doing?
+
+If you like what we're doing please consider donating to Let's Encrypt. Individual donors are critical to keeping the free certs rolling. If you can, please consider making it a recurring donation; that'd be cool of you.
+
+  https://letsencrypt.org
+
+# Finally
+
+On behalf of everyone involved in Let's Encrypt, welcome to the future of the encrypted web.
+
+Note: Please do not respond to this email. This is a one-time notification about your acceptance into the Beta Program. You will not receive further emails about our Beta Program unless you send in another application.
+
+[1] https://letsencrypt.readthedocs.org/en/latest/using.html#installation-and-usage
