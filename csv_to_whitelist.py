@@ -3,6 +3,12 @@
 Convert a CSV file into our Beta Whitelist format
 """
 
+try:
+  import tldextract
+except:
+  print("You need to 'pip install tldextract'")
+  sys.exit(1)
+
 import csv, sys, os, re, time, random
 from jinja2 import Template
 
@@ -40,6 +46,7 @@ class DummyFile(object):
 class DomainTester(object):
   def __init__(self):
     self.useGoogle = True
+    self.registeredDomains = {}
     self.domainList = {}
     self.emailList = {}
     self.invalidList = []
@@ -49,9 +56,11 @@ class DomainTester(object):
     self.useGoogle = value
 
   def checkAndAdd(self, domainEntry):
+    extracted = tldextract.extract(domainEntry.domain)
+
     problems=[]
     if self.useGoogle:
-      problems = malicious_url_check.malCheck(domainEntry.domain, writer=DummyFile())
+      problems = malicious_url_check.malCheck(extracted, writer=DummyFile())
       if problems:
         domainEntry.problems = problems
         self.malList.append(domainEntry)
@@ -62,6 +71,7 @@ class DomainTester(object):
 
       self.emailList[domainEntry.email].add(domainEntry.domain)
       self.domainList[domainEntry.domain] = domainEntry.email
+      self.registeredDomains[extracted.registered_domain] = domainEntry.email
 
       print(domainEntry)
 
@@ -84,18 +94,22 @@ class DomainTester(object):
         self.invalidList.append(domainEntry)
         continue
 
-      problems = self.checkAndAdd(domainEntry)
-      if problems:
-        continue
+      try:
+        problems = self.checkAndAdd(domainEntry)
+        if problems:
+          continue
 
-      if not "www." in domain:
-        domainWww = "www.{0}".format(domain)
-        domainEntryWww = DomainEntry(domain=domainWww, email=email)
-        self.checkAndAdd(domainEntryWww)
-      else:
-        domainNaked = domain.lstrip("www.")
-        domainEntryNaked = DomainEntry(domain=domainNaked, email=email)
-        self.checkAndAdd(domainEntryNaked)
+        if not "www." in domain:
+          domainWww = "www.{0}".format(domain)
+          domainEntryWww = DomainEntry(domain=domainWww, email=email)
+          self.checkAndAdd(domainEntryWww)
+        else:
+          domainNaked = domain.lstrip("www.")
+          domainEntryNaked = DomainEntry(domain=domainNaked, email=email)
+          self.checkAndAdd(domainEntryNaked)
+
+      except:
+        print("Caught exception at {0}".format(domainEntry))
 
   def listByDomain(self):
     return self.domainList
@@ -106,8 +120,11 @@ class DomainTester(object):
   def listInvalid(self):
     return self.invalidList
 
-  def listMalicious(self):
+  def listProblem(self):
     return self.malList
+
+  def listByRegisteredDomain(self):
+    return self.registeredDomains
 
 def make_messageId():
   timeval = time.time()
@@ -201,19 +218,20 @@ def processCSV(args):
         print("Invalid: {0}".format(domain))
 
     if args.verbosity > 0:
-      for domain in tester.listMalicious():
-        print("Malicious: {0}".format(domain))
+      for domain in tester.listProblem():
+        print("Problem: {0}".format(domain))
 
     print("Processed {entryCount} rows from limit {limit} offset {offset}. "
-      "This was {domainCount} domains and {emailCount} email addresses. "
-      "{invalidCount} were invalid, {malCount} were flagged malicious. "
+      "This was {domainCount} domains, {registeredCount} registered domains, and {emailCount} email addresses. "
+      "{invalidCount} were invalid, {probCount} were flagged malicious. "
       "Sent {emailSent} emails.".format(
         entryCount=lineCount, limit=args.limit,
         offset=args.offset, emailSent=emailSent,
         domainCount=len(tester.listByDomain()),
+        registeredCount=len(tester.listByRegisteredDomain()),
         emailCount=len(tester.listByEmail()),
         invalidCount=len(tester.listInvalid()),
-        malCount=len(tester.listMalicious())
+        probCount=len(tester.listProblem())
       ))
 
 

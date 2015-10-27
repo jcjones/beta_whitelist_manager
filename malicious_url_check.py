@@ -70,13 +70,12 @@ def isStale(filePath, maxTime=86400):
   """
   return (not os.path.exists(filePath)) or (time.time() - os.path.getmtime(filePath)) > maxTime
 
-def malCheck(in_url, writer=sys.stdout):
+def malCheck(check_url, writer=sys.stdout):
   problems=[]
 
   if not ALEXA_LIST or not ISC_LIST:
     raise Exception("You must call loadLists() first!")
 
-  check_url = tldextract.extract(in_url)
   if len(check_url.suffix) < 2:
     problems.append("Invalid TLD")
     return problems
@@ -122,6 +121,7 @@ if __name__ == "__main__":
   loadLists()
 
   for url in sys.argv[1:]:
-    results = malCheck(url)
+    extracted = tldextract.extract(url)
+    results = malCheck(extracted)
     for res in results:
       print("Malicious: {0}".format(results))
