@@ -38,7 +38,10 @@ def loadLists(writer=sys.stdout):
     with open(suspect_file, 'w') as sf_buffer:
       sf_buffer.write(new_file.content)
 
-  if isStale(safebrowsing_db):
+  if safebrowsing_bootstrap:
+      print("Initial download of SafeBrowsing DB... this will take a few minutes.")
+      updateSafebrowsing()
+  elif isStale(safebrowsing_db, maxTime=259200):
     print >> writer, "Updating Google Safebrowsing DB..."
     updateSafebrowsing()
 
@@ -114,10 +117,6 @@ def malCheck(check_url, writer=sys.stdout):
   return problems
 
 if __name__ == "__main__":
-  if safebrowsing_bootstrap:
-    print("Initial download of SafeBrowsing DB... this will take a few minutes.")
-    updateSafebrowsing()
-
   loadLists()
 
   for url in sys.argv[1:]:

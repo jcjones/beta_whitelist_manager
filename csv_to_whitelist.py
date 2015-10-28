@@ -204,7 +204,7 @@ def processCSV(args):
 
         # Email override
         if args.emailOverride:
-          email = "jcjones@letsencrypt.org"
+          email = args.emailOverride
 
         sendEmail({
           "domains": domains,
@@ -239,7 +239,7 @@ def main():
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("-v", dest='verbosity', help="Increase verbosity", action='count')
   parser.add_argument("--email", help="Enable email", action='store_true')
-  parser.add_argument("--emailOverride", help="Override", action='store_true')
+  parser.add_argument("--emailOverride", help="Override")
   parser.add_argument("--noGoogle", help="Disable Google Safebrowsing", action='store_true')
 
   parser.add_argument("--update", help="Update Safebrowsing", action='store_true')
