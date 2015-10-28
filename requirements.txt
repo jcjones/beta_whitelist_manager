@@ -1,0 +1,2 @@
+gglsbl>=0.4
+tldextract>=1.7.1

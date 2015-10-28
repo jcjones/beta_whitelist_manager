@@ -23,7 +23,7 @@ safebrowsing_db = os.environ['HOME'] + '/Downloads/safebrowsing.db'
 suspect_file = os.environ['HOME'] + '/Downloads/suspiciousdomains_Low.txt'
 topthousand_file = os.environ['HOME'] + '/Downloads/alexa_1000.csv'
 
-safebrowsing_bootstrap = not os.path.exists(safebrowsing_db) or (os.path.getsize(safebrowsing_db) < 10000)
+safebrowsing_bootstrap = not os.path.exists(safebrowsing_db) or (os.path.getsize(safebrowsing_db) < (1024*1024))
 
 # Be sure to occasionally run sbl.update_hash_prefix_cache()
 sbl = SafeBrowsingList(safebrowsing_token, db_path=safebrowsing_db)
