@@ -1,19 +1,14 @@
 #!/usr/bin/python
-import requests, os, time, sys, zipfile
+import os, time, sys, zipfile
 from StringIO import StringIO
 
 try:
+  import requests
+  import tldextract
   from gglsbl import SafeBrowsingList
 except:
-  print("You need to 'pip install gglsbl'")
+  print("You need to 'pip install -r requirements.txt'")
   sys.exit(1)
-
-try:
-  import tldextract
-except:
-  print("You need to 'pip install tldextract'")
-  sys.exit(1)
-
 
 safebrowsing_token = 'AIzaSyBKlevd7lUJpEq0XGnvaojrmS9OJqWY6YA'
 isc_url = 'https://isc.sans.edu/feeds/suspiciousdomains_Low.txt'

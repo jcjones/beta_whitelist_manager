@@ -1,2 +1,3 @@
 gglsbl>=0.4
-tldextract>=1.7.1
+tldextract>=1.7.0
+requests>=2.4.0

@@ -6,7 +6,7 @@ Convert a CSV file into our Beta Whitelist format
 try:
   import tldextract
 except:
-  print("You need to 'pip install tldextract'")
+  print("You need to 'pip install -r requirements.txt'")
   sys.exit(1)
 
 import csv, sys, os, re, time, random
