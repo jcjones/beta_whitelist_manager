@@ -25,6 +25,7 @@ COL_EMAIL = "What email address can we contact you at when we're ready for you?"
 
 TEMPLATE_DIR = "{0}/templates".format(os.path.dirname(os.path.abspath(__file__)))
 DOMAIN_PATTERN = re.compile("^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,18}$")
+PUNYCODE_PATTERN = re.compile("xn--")
 
 class DomainEntry(object):
   def __init__(self, domain="", email=""):
@@ -89,7 +90,7 @@ class DomainTester(object):
 
       domainEntry = DomainEntry(domain=domain, email=email)
 
-      if not DOMAIN_PATTERN.match(domain):
+      if not DOMAIN_PATTERN.match(domain) or PUNYCODE_PATTERN.match(domain):
         print ("Invalid: {0}".format(domainEntry))
         self.invalidList.append(domainEntry)
         continue
