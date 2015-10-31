@@ -18,6 +18,7 @@ import smtplib
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 
 # The heading values in the header row for the columns
 COL_DOMAIN = "What domain(s) would you like to get a certificate for?"
@@ -135,7 +136,7 @@ def make_messageId():
   idstring = "betaprogram@letsencrypt.org"
   return "<{0}.{1}.{2}.{3}>".format(utcdate, pid, randint, idstring)
 
-def sendEmail(contents):
+def sendEmail(contents, mailServer=None):
   from jinja2 import Environment, FileSystemLoader
 
   env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
@@ -145,14 +146,12 @@ def sendEmail(contents):
   addrFrom = "Let's Encrypt Beta <betaprogram@letsencrypt.org>"
   addrTo = contents['email']
 
-  # mailServer = "10.0.12.40"
-  mailServer = "10.0.32.40"
-
   msgRoot = MIMEMultipart()
   msgRoot['Subject'] = "Let's Encrypt Closed Beta Invite"
   msgRoot['From'] = addrFrom
   msgRoot['To'] = addrTo
   msgRoot['Message-Id'] = make_messageId()
+  msgRoot['Date'] = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S +0000")
   msgRoot.preamble = 'This is a multi-part message in MIME format.'
 
   msgAlternative = MIMEMultipart('alternative')
@@ -164,9 +163,11 @@ def sendEmail(contents):
   msgText = MIMEText(htmlTemplate.render(contents), 'html')
   msgAlternative.attach(msgText)
 
-  s = smtplib.SMTP(mailServer)
-  s.sendmail(addrFrom, [addrTo], msgRoot.as_string())
-  s.quit()
+  if not mailServer:
+    print(msgRoot)
+    return
+
+  mailServer.sendmail(addrFrom, [addrTo], msgRoot.as_string())
   print("Email sent to {0}".format(addrTo))
 
 def processCSV(args):
@@ -199,7 +200,9 @@ def processCSV(args):
         for domain, email in tester.listByDomain().iteritems():
           outFile.write('- "{0}" # {1}\n'.format(domain.strip(), email))
 
-    if args.email:
+    if args.emailServer:
+      print("Sending email via {0}".format(args.emailServer))
+      mailServer = smtplib.SMTP(args.emailServer)
 
       for email, domains in tester.listByEmail().iteritems():
 
@@ -210,9 +213,11 @@ def processCSV(args):
         sendEmail({
           "domains": domains,
           "email": email
-        })
+        }, mailServer=mailServer)
 
         emailSent += 1
+
+      mailServer.quit()
 
     if args.verbosity > 1:
       for domain in tester.listInvalid():
@@ -239,8 +244,8 @@ def processCSV(args):
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("-v", dest='verbosity', help="Increase verbosity", action='count')
-  parser.add_argument("--email", help="Enable email", action='store_true')
-  parser.add_argument("--emailOverride", help="Override")
+  parser.add_argument("--emailServer", help="Send email via server")
+  parser.add_argument("--emailOverride", help="Override recipient")
   parser.add_argument("--noGoogle", help="Disable Google Safebrowsing", action='store_true')
 
   parser.add_argument("--update", help="Update Safebrowsing", action='store_true')
