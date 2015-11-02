@@ -109,7 +109,8 @@ class DomainTester(object):
           domainNaked = domain.lstrip("www.")
           domainEntryNaked = DomainEntry(domain=domainNaked, email=email)
           self.checkAndAdd(domainEntryNaked)
-
+      except (KeyboardInterrupt, SystemExit):
+        raise
       except:
         print("Caught exception at {0}".format(domainEntry))
 
@@ -197,14 +198,23 @@ def processCSV(args):
 
     if args.out:
       with open(args.out, "w") as outFile:
-        for domain, email in tester.listByDomain().iteritems():
-          outFile.write('- "{0}" # {1}\n'.format(domain.strip(), email))
+        outFile.write("beta-whitelist: # Produced {0}".format(datetime.now().isoformat()))
+        domainsToWrite = tester.listByDomain()
+        for domain in sorted(domainsToWrite):
+          email = domainsToWrite[domain]
+          outFile.write('  - "{0}" # {1}\n'.format(domain.strip(), email))
 
     if args.emailServer:
-      print("Sending email via {0}".format(args.emailServer))
-      mailServer = smtplib.SMTP(args.emailServer)
+      if args.emailServer.lower() == "none":
+        print("Not actually sending.")
+        mailServer = None
+      else:
+        print("Sending email via {0}".format(args.emailServer))
+        mailServer = smtplib.SMTP(args.emailServer)
 
-      for email, domains in tester.listByEmail().iteritems():
+      emailsToSend = tester.listByEmail()
+      for email in sorted(tester.listByEmail()):
+        domains = emailsToSend[email]
 
         # Email override
         if args.emailOverride:
@@ -217,7 +227,8 @@ def processCSV(args):
 
         emailSent += 1
 
-      mailServer.quit()
+      if mailServer:
+        mailServer.quit()
 
     if args.verbosity > 1:
       for domain in tester.listInvalid():
