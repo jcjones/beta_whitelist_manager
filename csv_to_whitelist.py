@@ -32,11 +32,15 @@ class DomainEntry(object):
   def __init__(self, domain="", email=""):
     self.domain = domain
     self.email = email
-    self.extracted = tldextract.extract(self.domain)
     self.problems = []
     self.addedDate = None
     self.safebrowsingDate = None
     self.notificationDate = None
+    try:
+      self.extracted = tldextract.extract(self.domain)
+    except ValueError, ve:
+      self.problems.append("Couldn't decode domain {0}: {1}".format(self.domain, ve))
+
 
   def __repr__(self):
     msg = "domain={0} email={1}".format(self.domain, self.email)
@@ -66,10 +70,16 @@ class DomainEntry(object):
     return len(self.problems) > 0
 
   def check(self, withMalCheck=True):
+    self.problems=[]
     if not DOMAIN_PATTERN.match(self.domain):
       self.problems.append("Invalid format")
+      return
     if PUNYCODE_PATTERN.match(self.domain):
       self.problems.append("Punycode not permitted")
+      return
+    if not self.extracted:
+      self.problems.append("Unparseable domain name")
+      return
 
     if withMalCheck and not self.safebrowsingDate:
       malProblems = malicious_url_check.malCheck(self.extracted,
@@ -135,10 +145,13 @@ class DomainTester(object):
       self.associateDomainWithEmail(domainEntry)
       self.registeredDomains[domainEntry.getRegisteredDomain()] = domainEntry.email
 
-  def getWwwComplementName(self, domainName):
-      if not "www." in domainName:
-        return "www.{0}".format(domainName)
-      return domainName.lstrip("www.")
+  def getWwwComplementName(self, domainObj):
+      assert type(domainObj) is DomainEntry
+      if domainObj.extracted.subdomain == "www":
+        return domainObj.extracted.registered_domain
+      if len(domainObj.extracted.subdomain) < 1:
+        return "www.{0}".format(domainObj.extracted.registered_domain)
+      return None
 
   def processEntry(self, domains=[], email=""):
     for domain in re.split('[,; ]', domains):
@@ -162,9 +175,10 @@ class DomainTester(object):
           continue
 
         # If it has a WWW, get the not-WWW form. Or add a WWW.
-        compDomain = self.getWwwComplementName(domainEntry.domain)
-        compEntry = self.getOrCreateDomainEntry(domain=compDomain, email=email)
-        self.checkAndTally(compEntry)
+        compDomain = self.getWwwComplementName(domainEntry)
+        if compDomain:
+          compEntry = self.getOrCreateDomainEntry(domain=compDomain, email=email)
+          self.checkAndTally(compEntry)
 
       except (KeyboardInterrupt, SystemExit):
         raise
