@@ -9,7 +9,7 @@ except:
   print("You need to 'pip install -r requirements.txt'")
   sys.exit(1)
 
-import csv, sys, os, re, time, random
+import csv, sys, os, re, time, random, shelve
 from jinja2 import Template
 
 import malicious_url_check
@@ -32,7 +32,11 @@ class DomainEntry(object):
   def __init__(self, domain="", email=""):
     self.domain = domain
     self.email = email
-    self.problems = None
+    self.extracted = tldextract.extract(self.domain)
+    self.problems = []
+    self.addedDate = None
+    self.safebrowsingDate = None
+    self.notificationDate = None
 
   def __repr__(self):
     msg = "domain={0} email={1}".format(self.domain, self.email)
@@ -40,7 +44,42 @@ class DomainEntry(object):
     if self.problems:
       msg = "{0} problems={1}".format(msg, self.problems)
 
+    if self.safebrowsingDate:
+      msg = "{0} S".format(msg)
+
+    if self.addedDate:
+      msg = "{0} A".format(msg)
+
+    if self.notificationDate:
+      msg = "{0} N".format(msg)
+
     return msg
+
+  def isInvalid(self):
+    if not DOMAIN_PATTERN.match(self.domain):
+      return True
+    if PUNYCODE_PATTERN.match(self.domain):
+      return True
+    return False
+
+  def hasProblems(self):
+    return len(self.problems) > 0
+
+  def check(self, withMalCheck=True):
+    if not DOMAIN_PATTERN.match(self.domain):
+      self.problems.append("Invalid format")
+    if PUNYCODE_PATTERN.match(self.domain):
+      self.problems.append("Punycode not permitted")
+
+    if withMalCheck and not self.safebrowsingDate:
+      malProblems = malicious_url_check.malCheck(self.extracted,
+          writer=DummyFile())
+      self.problems.extend(malProblems)
+      self.safebrowsingDate = datetime.now()
+
+  def getRegisteredDomain(self):
+    return self.extracted.registered_domain
+
 
 class DummyFile(object):
     def write(self, x): pass
@@ -49,35 +88,57 @@ class DomainTester(object):
   def __init__(self):
     self.useGoogle = True
     self.registeredDomains = {}
-    self.domainList = {}
     self.emailList = {}
     self.invalidList = []
     self.malList = []
+    self.shelf = None
 
   def setUseGoogle(self, value):
     self.useGoogle = value
 
-  def checkAndAdd(self, domainEntry):
-    extracted = tldextract.extract(domainEntry.domain)
+  def associateDomainWithEmail(self, domainEntry):
+    if domainEntry.email not in self.emailList:
+      self.emailList[domainEntry.email] = set()
 
-    problems=[]
-    if self.useGoogle:
-      problems = malicious_url_check.malCheck(extracted, writer=DummyFile())
-      if problems:
-        domainEntry.problems = problems
+    self.emailList[domainEntry.email].add(domainEntry.domain)
+
+  def loadShelf(self, shelf):
+    self.shelf = shelf
+
+    for domain, domainObj in shelf.iteritems():
+      assert type(domainObj) is DomainEntry
+      self.checkAndTally(domainObj)
+
+  def getOrCreateDomainEntry(self, domain=None, email=None):
+    if domain not in self.shelf:
+      self.shelf[domain] = DomainEntry(domain=domain, email=email)
+
+    return self.shelf[domain]
+
+  def getDomain(self, domainName):
+    obj = self.shelf[domainName]
+    assert type(obj) is DomainEntry
+    return obj
+
+  def checkAndTally(self, domainEntry):
+    extracted = domainEntry.extracted
+
+    domainEntry.check(withMalCheck=self.useGoogle)
+    print(domainEntry)
+
+    if domainEntry.hasProblems():
+      if domainEntry.isInvalid():
+        self.invalidList.append(domainEntry)
+      else:
         self.malList.append(domainEntry)
+    else:
+      self.associateDomainWithEmail(domainEntry)
+      self.registeredDomains[domainEntry.getRegisteredDomain()] = domainEntry.email
 
-    if not problems:
-      if domainEntry.email not in self.emailList:
-        self.emailList[domainEntry.email] = set()
-
-      self.emailList[domainEntry.email].add(domainEntry.domain)
-      self.domainList[domainEntry.domain] = domainEntry.email
-      self.registeredDomains[extracted.registered_domain] = domainEntry.email
-
-      print(domainEntry)
-
-    return problems
+  def getWwwComplementName(self, domainName):
+      if not "www." in domainName:
+        return "www.{0}".format(domainName)
+      return domainName.lstrip("www.")
 
   def processEntry(self, domains=[], email=""):
     for domain in re.split('[,; ]', domains):
@@ -89,33 +150,29 @@ class DomainTester(object):
       if len(domain) < 2:
         continue
 
-      domainEntry = DomainEntry(domain=domain, email=email)
+      domainEntry = self.getOrCreateDomainEntry(domain=domain, email=email)
+      domainEntry.check()
 
-      if not DOMAIN_PATTERN.match(domain) or PUNYCODE_PATTERN.match(domain):
-        print ("Invalid: {0}".format(domainEntry))
+      if domainEntry.check():
         self.invalidList.append(domainEntry)
-        continue
 
       try:
-        problems = self.checkAndAdd(domainEntry)
-        if problems:
+        self.checkAndTally(domainEntry)
+        if domainEntry.problems:
           continue
 
-        if not "www." in domain:
-          domainWww = "www.{0}".format(domain)
-          domainEntryWww = DomainEntry(domain=domainWww, email=email)
-          self.checkAndAdd(domainEntryWww)
-        else:
-          domainNaked = domain.lstrip("www.")
-          domainEntryNaked = DomainEntry(domain=domainNaked, email=email)
-          self.checkAndAdd(domainEntryNaked)
+        # If it has a WWW, get the not-WWW form. Or add a WWW.
+        compDomain = self.getWwwComplementName(domainEntry.domain)
+        compEntry = self.getOrCreateDomainEntry(domain=compDomain, email=email)
+        self.checkAndTally(compEntry)
+
       except (KeyboardInterrupt, SystemExit):
         raise
-      except:
-        print("Caught exception at {0}".format(domainEntry))
+      except Exception, err:
+        print("Caught exception at {0}: {1}".format(domainEntry, err))
 
-  def listByDomain(self):
-    return self.domainList
+  def listObjectsByDomain(self):
+    return self.shelf
 
   def listByEmail(self):
     return self.emailList
@@ -171,9 +228,10 @@ def sendEmail(contents, mailServer=None):
   mailServer.sendmail(addrFrom, [addrTo], msgRoot.as_string())
   print("Email sent to {0}".format(addrTo))
 
-def processCSV(args):
+def processCSV(args, shelf=None):
   tester = DomainTester()
   tester.setUseGoogle(not args.noGoogle)
+  tester.loadShelf(shelf)
 
   lineCount = 0
   lineLimit = args.limit
@@ -195,14 +253,18 @@ def processCSV(args):
         lineLimit -= 1
         if lineLimit < 1:
           break
+    # Done with reading file, so tester knows all domains
 
     if args.out:
       with open(args.out, "w") as outFile:
-        outFile.write("beta-whitelist: # Produced {0}".format(datetime.now().isoformat()))
-        domainsToWrite = tester.listByDomain()
+        outFile.write("beta-whitelist: # Produced {0}\n".format(datetime.now().isoformat()))
+        domainsToWrite = tester.listObjectsByDomain()
         for domain in sorted(domainsToWrite):
-          email = domainsToWrite[domain]
-          outFile.write('  - "{0}" # {1}\n'.format(domain.strip(), email))
+          obj = tester.getDomain(domain)
+          if not obj.addedDate:
+            obj.addedDate = datetime.now()
+          outFile.write('  - "{0}" # {1} {2}\n'.format(domain.strip(), obj.email, obj.addedDate))
+
 
     if args.emailServer:
       if args.emailServer.lower() == "none":
@@ -216,16 +278,31 @@ def processCSV(args):
       for email in sorted(tester.listByEmail()):
         domains = emailsToSend[email]
 
-        # Email override
+        # Determine if there are changes
+        newDomains = 0
+        for domain in domains:
+          if not tester.getDomain(domain).notificationDate:
+            newDomains += 1
+
         if args.emailOverride:
           email = args.emailOverride
 
-        sendEmail({
-          "domains": domains,
-          "email": email
-        }, mailServer=mailServer)
+        # Only send an email if we have changes
+        if newDomains > 0:
+          sendEmail({
+            "domains": domains,
+            "email": email
+          }, mailServer=mailServer)
 
-        emailSent += 1
+          emailSent += 1
+
+        # Only mark this domain as being notified if we are
+        # actually sending them the email
+        if not args.emailOverride:
+          for domain in domains:
+            tester.getDomain(domain).notificationDate = datetime.now()
+
+      # End of for email loop
 
       if mailServer:
         mailServer.quit()
@@ -244,16 +321,17 @@ def processCSV(args):
       "Sent {emailSent} emails.".format(
         entryCount=lineCount, limit=args.limit,
         offset=args.offset, emailSent=emailSent,
-        domainCount=len(tester.listByDomain()),
+        domainCount=len(tester.listObjectsByDomain()),
         registeredCount=len(tester.listByRegisteredDomain()),
         emailCount=len(tester.listByEmail()),
         invalidCount=len(tester.listInvalid()),
         probCount=len(tester.listProblem())
       ))
 
-
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
+
+  parser.add_argument("--db",  help="Database", default="whitelist.db")
   parser.add_argument("-v", dest='verbosity', help="Increase verbosity", action='count')
   parser.add_argument("--emailServer", help="Send email via server")
   parser.add_argument("--emailOverride", help="Override recipient")
@@ -268,8 +346,12 @@ def main():
   args = parser.parse_args()
 
   if args.csv:
-    malicious_url_check.loadLists()
-    processCSV(args)
+    shelf = shelve.open(args.db, writeback=True)
+    try:
+      malicious_url_check.loadLists()
+      processCSV(args, shelf=shelf)
+    finally:
+      shelf.close()
 
   if args.update:
     print ("Updating Safebrowsing...")
