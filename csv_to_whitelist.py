@@ -29,18 +29,14 @@ DOMAIN_PATTERN = re.compile("^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,18}$"
 PUNYCODE_PATTERN = re.compile("xn--")
 
 class DomainEntry(object):
-  def __init__(self, domain="", email=""):
+  def __init__(self, extracted, domain="", email=""):
+    self.extracted = extracted
     self.domain = domain
     self.email = email
     self.problems = []
     self.addedDate = None
     self.safebrowsingDate = None
     self.notificationDate = None
-    try:
-      self.extracted = tldextract.extract(self.domain)
-    except ValueError, ve:
-      self.problems.append("Couldn't decode domain {0}: {1}".format(self.domain, ve))
-
 
   def __repr__(self):
     msg = "domain={0} email={1}".format(self.domain, self.email)
@@ -121,7 +117,12 @@ class DomainTester(object):
 
   def getOrCreateDomainEntry(self, domain=None, email=None):
     if domain not in self.shelf:
-      self.shelf[domain] = DomainEntry(domain=domain, email=email)
+      try:
+        extracted = tldextract.extract(domain)
+      except ValueError, ve:
+        print("Couldn't decode domain {0}: {1}".format(domain, ve))
+
+      self.shelf[domain] = DomainEntry(extracted, domain=domain, email=email)
 
     return self.shelf[domain]
 
@@ -131,8 +132,6 @@ class DomainTester(object):
     return obj
 
   def checkAndTally(self, domainEntry):
-    extracted = domainEntry.extracted
-
     domainEntry.check(withMalCheck=self.useGoogle)
     print(domainEntry)
 
@@ -275,6 +274,8 @@ def processCSV(args, shelf=None):
         domainsToWrite = tester.listObjectsByDomain()
         for domain in sorted(domainsToWrite):
           obj = tester.getDomain(domain)
+          if obj.hasProblems():
+            continue
           if not obj.addedDate:
             obj.addedDate = datetime.now()
           outFile.write('  - "{0}" # {1} {2}\n'.format(domain.strip(), obj.email, obj.addedDate))
@@ -290,21 +291,27 @@ def processCSV(args, shelf=None):
 
       emailsToSend = tester.listByEmail()
       for email in sorted(tester.listByEmail()):
-        domains = emailsToSend[email]
+        newDomains = []
+        oldDomains = []
 
         # Determine if there are changes
-        newDomains = 0
-        for domain in domains:
-          if not tester.getDomain(domain).notificationDate:
-            newDomains += 1
+        for domain in emailsToSend[email]:
+          domainObj = tester.getDomain(domain)
+          if domainObj.hasProblems():
+            continue
+
+          if not domainObj.notificationDate:
+            newDomains.append(domainObj.domain)
+          else:
+            oldDomains.append(domainObj.domain)
 
         if args.emailOverride:
           email = args.emailOverride
 
         # Only send an email if we have changes
-        if newDomains > 0:
+        if len(newDomains) > 0:
           sendEmail({
-            "domains": domains,
+            "domains": newDomains + oldDomains,
             "email": email
           }, mailServer=mailServer)
 
@@ -313,8 +320,9 @@ def processCSV(args, shelf=None):
         # Only mark this domain as being notified if we are
         # actually sending them the email
         if not args.emailOverride:
-          for domain in domains:
-            tester.getDomain(domain).notificationDate = datetime.now()
+          for domain in newDomains:
+            domainObj = tester.getDomain(domain)
+            domainObj.notificationDate = datetime.now()
 
       # End of for email loop
 
