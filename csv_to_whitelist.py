@@ -133,7 +133,6 @@ class DomainTester(object):
 
   def checkAndTally(self, domainEntry):
     domainEntry.check(withMalCheck=self.useGoogle)
-    print(domainEntry)
 
     if domainEntry.hasProblems():
       if domainEntry.isInvalid():
@@ -251,104 +250,116 @@ def processCSV(args, shelf=None):
   lineOffset = args.offset
   emailSent = 0
 
-  with open(args.csv, "r") as csvFile:
-    reader = csv.DictReader(csvFile)
-    for row in reader:
-      if lineOffset and lineOffset > 0:
-        lineOffset -= 1
-        continue
+  if args.csv:
+    with open(args.csv, "r") as csvFile:
+      reader = csv.DictReader(csvFile)
+      for row in reader:
+        if lineOffset and lineOffset > 0:
+          lineOffset -= 1
+          continue
 
-      tester.processEntry(domains=row[COL_DOMAIN], email=row[COL_EMAIL])
+        tester.processEntry(domains=row[COL_DOMAIN], email=row[COL_EMAIL])
 
-      lineCount += 1
+        lineCount += 1
 
-      if lineLimit:
-        lineLimit -= 1
-        if lineLimit < 1:
-          break
-    # Done with reading file, so tester knows all domains
+        if lineLimit:
+          lineLimit -= 1
+          if lineLimit < 1:
+            break
+  # Done with reading file, so tester knows all domains
 
-    if args.out:
-      with open(args.out, "w") as outFile:
-        outFile.write("beta-whitelist: # Produced {0}\n".format(datetime.now().isoformat()))
-        domainsToWrite = tester.listObjectsByDomain()
-        for domain in sorted(domainsToWrite):
-          obj = tester.getDomain(domain)
-          if obj.hasProblems():
-            continue
-          if not obj.addedDate:
-            obj.addedDate = datetime.now()
-          outFile.write('  - "{0}" # {1} {2}\n'.format(domain.strip(), obj.email, obj.addedDate))
+  # Produce output file
+  if args.out:
+    with open(args.out, "w") as outFile:
+      outFile.write("beta-whitelist: # Produced {0}\n".format(datetime.now().isoformat()))
+      domainsToWrite = tester.listObjectsByDomain()
+      for domain in sorted(domainsToWrite):
+        obj = tester.getDomain(domain)
+        if obj.hasProblems():
+          continue
+        if not obj.addedDate:
+          obj.addedDate = datetime.now()
+        outFile.write('  - "{0}" # {1} {2}\n'.format(domain.strip(), obj.email, obj.addedDate))
 
+  # Send emails
+  if args.emailServer:
+    if args.emailServer.lower() == "none":
+      print("Not actually sending.")
+      mailServer = None
+    else:
+      print("Sending email via {0}".format(args.emailServer))
+      mailServer = smtplib.SMTP(args.emailServer)
 
-    if args.emailServer:
-      if args.emailServer.lower() == "none":
-        print("Not actually sending.")
-        mailServer = None
-      else:
-        print("Sending email via {0}".format(args.emailServer))
-        mailServer = smtplib.SMTP(args.emailServer)
+    emailsToSend = tester.listByEmail()
+    for email in tester.listByEmail():
+      newDomains = []
+      oldDomains = []
 
-      emailsToSend = tester.listByEmail()
-      for email in sorted(tester.listByEmail()):
-        newDomains = []
-        oldDomains = []
+      # Limit quantity
+      if args.emailBatch is not None and emailSent >= args.emailBatch:
+        break
 
-        # Determine if there are changes
-        for domain in emailsToSend[email]:
+      # Determine if there are changes
+      for domain in emailsToSend[email]:
+        domainObj = tester.getDomain(domain)
+        if domainObj.hasProblems():
+          continue
+
+        if not domainObj.notificationDate:
+          newDomains.append(domainObj.domain)
+        else:
+          oldDomains.append(domainObj.domain)
+
+      if args.emailOverride:
+        email = args.emailOverride
+
+      # Only send an email if we have changes
+      if len(newDomains) > 0:
+        sendEmail({
+          "domains": newDomains + oldDomains,
+          "email": email
+        }, mailServer=mailServer)
+
+        emailSent += 1
+
+      # Only mark this domain as being notified if we are
+      # actually sending them the email
+      if mailServer and not args.emailOverride:
+        for domain in newDomains:
           domainObj = tester.getDomain(domain)
-          if domainObj.hasProblems():
-            continue
+          domainObj.notificationDate = datetime.now()
 
-          if not domainObj.notificationDate:
-            newDomains.append(domainObj.domain)
-          else:
-            oldDomains.append(domainObj.domain)
+    # End of for email loop
 
-        if args.emailOverride:
-          email = args.emailOverride
+    if mailServer:
+      mailServer.quit()
 
-        # Only send an email if we have changes
-        if len(newDomains) > 0:
-          sendEmail({
-            "domains": newDomains + oldDomains,
-            "email": email
-          }, mailServer=mailServer)
+  # Show results
+  if args.verbosity > 2:
+    for domainObj in tester.listObjectsByDomain():
+      print(domainObj)
 
-          emailSent += 1
+  if args.verbosity > 1:
+    for domain in tester.listInvalid():
+      print("Invalid: {0}".format(domain))
 
-        # Only mark this domain as being notified if we are
-        # actually sending them the email
-        if not args.emailOverride:
-          for domain in newDomains:
-            domainObj = tester.getDomain(domain)
-            domainObj.notificationDate = datetime.now()
+  if args.verbosity > 0:
+    for domain in tester.listProblem():
+      print("Problem: {0}".format(domain))
 
-      # End of for email loop
-
-      if mailServer:
-        mailServer.quit()
-
-    if args.verbosity > 1:
-      for domain in tester.listInvalid():
-        print("Invalid: {0}".format(domain))
-
-    if args.verbosity > 0:
-      for domain in tester.listProblem():
-        print("Problem: {0}".format(domain))
-
-    print("Processed {entryCount} rows from limit {limit} offset {offset}. "
-      "This was {domainCount} domains, {registeredCount} registered domains, and {emailCount} email addresses. "
-      "{invalidCount} were invalid, {probCount} were flagged malicious. "
-      "Sent {emailSent} emails.".format(
-        entryCount=lineCount, limit=args.limit,
-        offset=args.offset, emailSent=emailSent,
-        domainCount=len(tester.listObjectsByDomain()),
-        registeredCount=len(tester.listByRegisteredDomain()),
-        emailCount=len(tester.listByEmail()),
-        invalidCount=len(tester.listInvalid()),
-        probCount=len(tester.listProblem())
-      ))
+  print("Processed {entryCount} rows from limit {limit} offset {offset}. "
+    "This was {domainCount} domains, {registeredCount} registered domains, and {emailCount} email addresses. "
+    "{invalidCount} were invalid, {probCount} were flagged malicious. "
+    "Sent {emailSent} emails, limited to {emailBatch}.".format(
+      entryCount=lineCount, limit=args.limit,
+      offset=args.offset, emailSent=emailSent,
+      emailBatch=args.emailBatch,
+      domainCount=len(tester.listObjectsByDomain()),
+      registeredCount=len(tester.listByRegisteredDomain()),
+      emailCount=len(tester.listByEmail()),
+      invalidCount=len(tester.listInvalid()),
+      probCount=len(tester.listProblem())
+    ))
 
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
@@ -357,6 +368,7 @@ def main():
   parser.add_argument("-v", dest='verbosity', help="Increase verbosity", action='count')
   parser.add_argument("--emailServer", help="Send email via server")
   parser.add_argument("--emailOverride", help="Override recipient")
+  parser.add_argument("--emailBatch", help="Number of emails to send",  type=int)
   parser.add_argument("--noGoogle", help="Disable Google Safebrowsing", action='store_true')
 
   parser.add_argument("--update", help="Update Safebrowsing", action='store_true')
@@ -367,7 +379,7 @@ def main():
   parser.add_argument("--limit", help="Number of rows to process",  type=int)
   args = parser.parse_args()
 
-  if args.csv:
+  if not args.update:
     shelf = shelve.open(args.db, writeback=True)
     try:
       malicious_url_check.loadLists()
