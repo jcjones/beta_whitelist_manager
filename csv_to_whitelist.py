@@ -336,7 +336,7 @@ def processCSV(args, shelf=None):
 
   # Show results
   if args.verbosity > 2:
-    for domainObj in tester.listObjectsByDomain():
+    for domainName, domainObj in tester.listObjectsByDomain().iteritems():
       print(domainObj)
 
   if args.verbosity > 1:
@@ -361,6 +361,54 @@ def processCSV(args, shelf=None):
       probCount=len(tester.listProblem())
     ))
 
+def sortNewOldDomains(tester, domainList):
+  values = { 'new': [], 'old': [] }
+
+  for domain in domainList:
+    domainObj = tester.getDomain(domain)
+    if domainObj.hasProblems():
+      continue
+
+    if not domainObj.notificationDate:
+      values['new'].append(domainObj.domain)
+    else:
+      values['old'].append(domainObj.domain)
+
+  return values
+
+def getStats(args, shelf=None):
+  tester = DomainTester()
+  tester.setUseGoogle(False)
+  tester.loadShelf(shelf)
+
+  numEmails=0
+  numToDoEmails=0
+  numNewUsers=0
+
+  for emailAddress, domainList in tester.listByEmail().iteritems():
+    values = sortNewOldDomains(tester, domainList)
+
+    numEmails += 1
+    if len(values['new']) > 0:
+      numToDoEmails += 1
+      if len(values['old']) == 0:
+        numNewUsers += 1
+
+    if args.verbosity > 0:
+      print("{email} [Total Domains: {domains}] [New Domains: {newDomains}]".format(
+        email=emailAddress,
+        domains=len(domainList),
+        newDomains=len(values['new'])
+      ))
+
+  print("There are {emailCount} email addresses, and {pending} of them are "
+    "waiting on an email. Of those, {newUsers} are new users.".format(
+      emailCount=numEmails,
+      pending=numToDoEmails,
+      newUsers=numNewUsers
+    ))
+
+
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
 
@@ -372,24 +420,29 @@ def main():
   parser.add_argument("--noGoogle", help="Disable Google Safebrowsing", action='store_true')
 
   parser.add_argument("--update", help="Update Safebrowsing", action='store_true')
-  parser.add_argument("--csv", help="CSV File")
+  parser.add_argument("--stats", help="Get stats", action='store_true')
+  parser.add_argument("--csv", help="Import CSV File")
 
   parser.add_argument("--out", help="YAML Fragment File")
   parser.add_argument("--offset", help="Skip rows in the CSV", type=int)
   parser.add_argument("--limit", help="Number of rows to process",  type=int)
   args = parser.parse_args()
 
-  if not args.update:
-    shelf = shelve.open(args.db, writeback=True)
-    try:
-      malicious_url_check.loadLists()
-      processCSV(args, shelf=shelf)
-    finally:
-      shelf.close()
-
   if args.update:
     print ("Updating Safebrowsing...")
     malicious_url_check.updateSafebrowsing()
+    return
+
+  shelf = shelve.open(args.db, writeback=True)
+  try:
+    if args.stats:
+      getStats(args, shelf=shelf)
+      return
+
+    malicious_url_check.loadLists()
+    processCSV(args, shelf=shelf)
+  finally:
+    shelf.close()
 
 if __name__ == "__main__":
  main()
