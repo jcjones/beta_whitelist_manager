@@ -443,6 +443,7 @@ def main():
     processCSV(args, shelf=shelf)
   finally:
     shelf.close()
+    print("Done.")
 
 if __name__ == "__main__":
  main()
