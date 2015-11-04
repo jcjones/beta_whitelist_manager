@@ -16,7 +16,7 @@
   git clone https://github.com/letsencrypt/letsencrypt
   cd letsencrypt
   ./letsencrypt-auto --agree-dev-preview <span style="background-color: yellow; font-weight: bold;">--server \
-      https://acme-v01.api.letsencrypt.org/directory</span> auth
+      https://acme-v01.api.letsencrypt.org/directory</span> certonly
 </pre>
 
 <p>If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.</p>

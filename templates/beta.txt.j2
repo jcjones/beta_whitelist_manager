@@ -13,7 +13,7 @@ When running the Python client (installation directions [1]), be sure to specify
   git clone https://github.com/letsencrypt/letsencrypt
   cd letsencrypt
   ./letsencrypt-auto --agree-dev-preview --server \
-      https://acme-v01.api.letsencrypt.org/directory auth
+      https://acme-v01.api.letsencrypt.org/directory certonly
 
 If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.
 
