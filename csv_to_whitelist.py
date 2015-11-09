@@ -126,6 +126,7 @@ class DomainTester(object):
         extracted = tldextract.extract(domain)
       except ValueError, ve:
         print("Couldn't decode domain {0}: {1}".format(domain, ve))
+        raise
 
       self.shelf[domain] = DomainEntry(extracted, domain=domain, email=email)
 
@@ -166,13 +167,13 @@ class DomainTester(object):
       if len(domain) < 2:
         continue
 
-      domainEntry = self.getOrCreateDomainEntry(domain=domain, email=email)
-      domainEntry.check()
-
-      if domainEntry.check():
-        self.invalidList.append(domainEntry)
-
       try:
+        domainEntry = self.getOrCreateDomainEntry(domain=domain, email=email)
+        domainEntry.check()
+
+        if domainEntry.check():
+          self.invalidList.append(domainEntry)
+
         self.checkAndTally(domainEntry)
         if domainEntry.problems:
           continue
