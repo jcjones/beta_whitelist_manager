@@ -10,13 +10,15 @@
   <a href="https://acme-v01.api.letsencrypt.org/directory">https://acme-v01.api.letsencrypt.org/directory</a>
 </pre>
 
-<p>When running the Python client (installation directions [<a href="https://letsencrypt.readthedocs.org/en/latest/using.html">1</a>]), be sure to specify the <tt>--server</tt> argument as shown below:</p>
+<p>The official Python client (installation directions [<a href="https://letsencrypt.readthedocs.org/en/latest/using.html">1</a>]) can run in an automatic mode, where it configures your webserver for you, or in a <tt>certonly</tt> mode where it places the necessary keys and certificates in <tt>/etc/letsencrypt/live</tt>. The automatic mode works best, right now, on recent versions of Debian. On other platforms you should consider appending the command <tt>certonly</tt> to the command line.</p>
+
+<p>Whatever your choice, please be sure to specify the <tt>--server</tt> argument as shown below, or you will receive certificates from the staging network <i>(from Happy Hacker Fake CA instead of Let's Encrypt)</i>:</p>
 
 <pre>
   git clone https://github.com/letsencrypt/letsencrypt
   cd letsencrypt
   ./letsencrypt-auto --agree-dev-preview <span style="background-color: yellow; font-weight: bold;">--server \
-      https://acme-v01.api.letsencrypt.org/directory</span> certonly
+      https://acme-v01.api.letsencrypt.org/directory</span> <i>[certonly]</i>
 </pre>
 
 <p>If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.</p>
