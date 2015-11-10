@@ -6,20 +6,60 @@ Thank you for your interest in our beta program! We're excited to let you know t
 
 To use Let's Encrypt's official client to obtain your real certificates, you will need to provide the production API URL on the command line:
 
-  https://acme-v01.api.letsencrypt.org/directory.
+  https://acme-v01.api.letsencrypt.org/directory
 
 When running the Python client (installation directions [1]), be sure to specify the --server argument as shown below:
 
   git clone https://github.com/letsencrypt/letsencrypt
   cd letsencrypt
-  ./letsencrypt-auto --agree-dev-preview --server \
-      https://acme-v01.api.letsencrypt.org/directory certonly
+  ./letsencrypt-auto --server https://acme-v01.api.letsencrypt.org/directory --help
+
+# How to use the client
+
+The Let's Encrypt client supports a number of different "plugins" that can be used to
+obtain and/or install certificates.  A few examples of the options are
+included below.
+
+If you're running Apache on a recent Debian-based OS, you can try the Apache
+plugin, which automates both obtaining and installing certs:
+
+  ./letsencrypt-auto --apache --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+
+To obtain a cert using a "standalone" webserver (you may need to temporarily
+stop your exising webserver) for example.com and www.example.com:
+
+  ./letsencrypt-auto certonly -a standalone \
+  -d example.com -d www.example.com \
+  --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+
+To obtain a cert using the "webroot" plugin, which can work with the webroot
+of any webserver software:
+
+  ./letsencrypt-auto certonly -a webroot --webroot-path /var/www/example \
+  -d example.com -d www.example.com \
+  -server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+
+Note: Currently the webroot plugin can only obtain certs for several domains simultaneously if they share a webroot.
+
+To receive instructions for the (fairly complex) process of obtaining a cert
+from Let's Encrypt by manually providing proof you control a domain:
+
+  ./letsencrypt-auto certonly -a manual -d example.com \
+  --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
 
 If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.
 
-## Known Issues
+## Help and Known Issues
 
-There are some known issues with the official Python client posted here: https://github.com/letsencrypt/letsencrypt/wiki/Known-issues
+You can get help with the client and Let's Encrypt at
+
+  https://community.letsencrypt.org/
+
+Known issues with the Python client can be tracked here:
+
+  https://github.com/letsencrypt/letsencrypt/issues
+
+Please search thoroughly for existing issues before filing a new report!
 
 # Renewals and Lifetimes
 

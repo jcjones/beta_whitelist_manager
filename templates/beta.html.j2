@@ -15,15 +15,60 @@
 <pre>
   git clone https://github.com/letsencrypt/letsencrypt
   cd letsencrypt
-  ./letsencrypt-auto --agree-dev-preview <span style="background-color: yellow; font-weight: bold;">--server \
-      https://acme-v01.api.letsencrypt.org/directory</span> certonly
+  ./letsencrypt-auto <span style="background-color: yellow; font-weight: bold;">--server \
+      https://acme-v01.api.letsencrypt.org/directory</span> --help
+</pre>
+
+<h2>How to use the client</h2>
+
+<p>The Let's Encrypt client supports a number of different "plugins" that can be used to obtain and/or install certificates.  A few examples of the options are included below.</p>
+
+<p>If you're running Apache on a recent Debian-based OS, you can try the Apache plugin, which automates both obtaining and installing certs:</p>
+
+<pre>
+  ./letsencrypt-auto --apache --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+</pre>
+
+<p>To obtain a cert using a "standalone" webserver (you may need to temporarily stop your exising webserver) for <tt>example.com</tt> and <tt>www.example.com</tt>:</p>
+
+<pre>
+  ./letsencrypt-auto certonly -a standalone \
+  -d example.com -d www.example.com \
+  --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+</pre>
+
+<p>To obtain a cert using the "webroot" plugin, which can work with the webroot of any webserver software:</p>
+
+<pre>
+  ./letsencrypt-auto certonly -a webroot --webroot-path /var/www/example \
+  -d example.com -d www.example.com \
+  -server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+</pre>
+
+<p><b>Note:</b> Currently the webroot plugin can only obtain certs for several domains simultaneously if they share a webroot.</p>
+
+<p>To receive instructions for the (fairly complex) process of obtaining a cert from Let's Encrypt by manually providing proof you control a domain:</p>
+
+<pre>
+  ./letsencrypt-auto certonly -a manual -d example.com \
+  --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
 </pre>
 
 <p>If you are using a different ACME client, be sure to configure it to use the production URL in order to get valid certificates. Many clients will default to the staging URL.</p>
 
-<h3>Known Issues</h3>
+<h3>Help and Known Issues</h3>
 
-<p>There are some known issues with the official Python client posted here: <a href="https://github.com/letsencrypt/letsencrypt/wiki/Known-issues">https://github.com/letsencrypt/letsencrypt/wiki/Known-issues</a></p>
+<p>You can get help with the client and Let's Encrypt at:</p>
+<pre>
+  <a href="https://community.letsencrypt.org/">https://community.letsencrypt.org/</a>
+</pre>
+
+<p>Known issues with the Python client can be tracked here:</p>
+<pre>
+  <a href="https://github.com/letsencrypt/letsencrypt/issues">https://github.com/letsencrypt/letsencrypt/issues</a>
+</pre>
+
+<p>Please search thoroughly for existing issues before filing a new report!</p>
 
 <h2>Renewals and Lifetimes</h2>
 
@@ -40,10 +85,10 @@
 <p><tt>Certificates/Domain</tt> you could run into through repeated re-issuance. This limit measures certificates issued for a given combination of <tt>Top Level Domain + Domain</tt>. This means if you issue certificates for the following domains, at the end you would have what we consider 4 certificates for the domain <tt>example.com</tt>.
 
 <ol>
-  <li>www.example.com</li>
-  <li>example.com www.example.com</li>
-  <li>webmail.example.com ldap.example.com</li>
-  <li>example.com www.example.com</li>
+  <li><tt>www.example.com</tt></li>
+  <li><tt>example.com</tt> <tt>www.example.com</tt></li>
+  <li><tt>webmail.example.com</tt> <tt>ldap.example.com</tt></li>
+  <li><tt>example.com</tt> <tt>www.example.com</tt></li>
 </ol>
 
 The limit on <tt>Certificates/Domain</tt> has a window of 60 days, to give 30 days for renewals. We know it's restrictive at present; thank you for your patience in helping us ensure Let's Encrypt is ready for the whole world.</p>
