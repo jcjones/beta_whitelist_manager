@@ -37,7 +37,7 @@ of any webserver software:
 
   ./letsencrypt-auto certonly -a webroot --webroot-path /var/www/example \
   -d example.com -d www.example.com \
-  -server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
+  --server https://acme-v01.api.letsencrypt.org/directory --agree-dev-preview
 
 Note: Currently the webroot plugin can only obtain certs for several domains simultaneously if they share a webroot.
 
