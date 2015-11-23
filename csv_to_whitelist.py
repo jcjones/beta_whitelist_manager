@@ -162,6 +162,7 @@ class DomainTester(object):
       domain = domain.lower()
       domain = re.sub("[ ]*(http|https)://", "", domain)
       domain = re.sub("\*\.", "", domain)
+      domain = re.sub("[\/\.]$", "", domain)
       domain = domain.strip()
 
       if len(domain) < 2:
